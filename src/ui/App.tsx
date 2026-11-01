@@ -1,9 +1,13 @@
+import { useState } from "react";
 import { Board } from "./Board";
+import { CardDrawer } from "./CardDrawer";
 import { useBoard } from "./useBoard";
 
 // 沙盘顶栏和四列看板
 export const App = () => {
   const { cards, founder, errorCode, loadSample, dispatch } = useBoard();
+  const [openCardId, setOpenCardId] = useState<string | null>(null);
+  const openCard = cards.find((card) => card.id === openCardId) ?? null;
   return (
     <div className="app">
       <header className="topbar">
@@ -28,7 +32,13 @@ export const App = () => {
             {errorCode}
           </p>
         ) : null}
-        <Board cards={cards} onDispatch={dispatch} />
+        <Board
+          cards={cards}
+          openCardId={openCardId}
+          onDispatch={dispatch}
+          onOpenCard={setOpenCardId}
+        />
+        {openCard ? <CardDrawer card={openCard} onClose={() => setOpenCardId(null)} /> : null}
       </main>
     </div>
   );
