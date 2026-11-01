@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { assertFinanceVerdict, validateRoleOutput } from "../agents/validate-output";
 import { ContractError, type FounderInput } from "../agents/types";
 import { reduceBoard } from "./state-machine";
 import {
@@ -21,7 +22,7 @@ const expectedSummaries = {
   card_defense: "汇总已确认质询",
 } as const;
 
-const investorOutput = JSON.stringify({
+const investorFixture = {
   questions: [
     {
       text: "为什么是现在，而不是沿用学长群？",
@@ -31,7 +32,8 @@ const investorOutput = JSON.stringify({
   evidenceRequests: ["同校教材支出的抽样来源"],
   verdict: "保留",
   rationale: "痛点有生活场景，但第一平台没有依据",
-});
+};
+const investorOutput = JSON.stringify(investorFixture);
 
 const fail = (): never => {
   console.log("FAIL 0 CONTRACT");
@@ -141,7 +143,128 @@ apply(11, "CONFIRM", "card_problem", { type: "CONFIRM", cardId: "card_problem" }
 expectIllegal(12, "confirm-fresh", { type: "CONFIRM", cardId: "card_user" }, "CONFIRM_NOT_ALLOWED");
 expectIllegal(13, "retry-idle", { type: "RETRY", cardId: "card_user" }, "RETRY_NOT_ALLOWED");
 
+try {
+  validateRoleOutput("investor", investorFixture);
+} catch {
+  console.log("FAIL 0 INVESTOR_FIXTURE");
+  process.exit(1);
+}
+
+const financeAssumptions = [
+  { name: "出让方服务费", value: null, unit: null },
+  { name: "单本履约成本", value: null, unit: null },
+];
+
+const expectCheck = (lineNumber: number, label: string, run: () => void, expected: string): void => {
+  try {
+    run();
+    if (expected !== "ok") {
+      fail();
+    }
+    lines.push(`${lineNumber} ${label} -> ok`);
+  } catch (error) {
+    if (!(error instanceof ContractError) || error.code !== expected) {
+      fail();
+    }
+    lines.push(`${lineNumber} ${label} -> ${error.code}`);
+  }
+};
+
+expectCheck(
+  14,
+  "FINANCE pass-without-unit-economics",
+  () => {
+    assertFinanceVerdict(founder, {
+      assumptions: financeAssumptions,
+      missingNumbers: [],
+      verdict: "通过",
+      evidenceRequests: [],
+    });
+  },
+  "FINANCE_HOLD_REQUIRED",
+);
+expectCheck(
+  15,
+  "FINANCE hold-without-unit-economics",
+  () => {
+    assertFinanceVerdict(founder, {
+      assumptions: financeAssumptions,
+      missingNumbers: ["抽成比例", "单本履约成本"],
+      verdict: "保留",
+      evidenceRequests: [],
+    });
+  },
+  "ok",
+);
+expectCheck(
+  16,
+  "COMPETITOR sourced-without-source",
+  () => {
+    validateRoleOutput("competitor", {
+      alternatives: [{ name: "闲鱼", source: null, status: "已给出来源" }],
+      differentiationHolds: null,
+      evidenceRequests: [],
+    });
+  },
+  "SOURCE_REQUIRED",
+);
+expectCheck(
+  17,
+  "COMPETITOR mark-待证",
+  () => {
+    validateRoleOutput("competitor", {
+      alternatives: [
+        { name: "闲鱼", source: null, status: "待证" },
+        { name: "学长学姐群", source: "立项摘录原文", status: "已给出来源" },
+      ],
+      differentiationHolds: null,
+      evidenceRequests: [],
+    });
+  },
+  "ok",
+);
+expectCheck(
+  18,
+  "INVESTOR polishedCopy",
+  () => {
+    validateRoleOutput("investor", {
+      ...investorFixture,
+      polishedCopy: "改写后的定位",
+    });
+  },
+  "ROLE_BOUNDARY",
+);
+expectCheck(
+  19,
+  "TARGET_USER valuation",
+  () => {
+    validateRoleOutput("target_user", {
+      scenario: "开学周，大二在宿舍群里求一本高数，两小时后消息被覆盖",
+      painReal: true,
+      habitChange: "不确定",
+      counterexample: "若书只要当天晚上用，对方更可能直接在现有群里回复，而不是改用小程序",
+      evidenceRequests: "10 名目标用户是否愿意为交接多走一步",
+      估值: "不该出现",
+    });
+  },
+  "ROLE_BOUNDARY",
+);
+
+try {
+  assertFinanceVerdict(
+    { ...founder, businessModel: "客单价 19 元，单本履约成本 3 元" },
+    {
+      assumptions: financeAssumptions,
+      missingNumbers: [],
+      verdict: "通过",
+      evidenceRequests: [],
+    },
+  );
+} catch {
+  fail();
+}
+
 for (const line of lines) {
   console.log(line);
 }
-console.log("OK 13");
+console.log("OK 19");
