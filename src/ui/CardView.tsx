@@ -12,7 +12,10 @@ interface CardViewProps {
 const manualOutput = JSON.stringify({ note: "手工占位" });
 
 const cardAction = (card: Card): { label: string; event: BoardEvent } | null => {
-  if (card.columnId === "backlog" && card.status === "idle") {
+  const canStart =
+    (card.columnId === "backlog" && card.status === "idle") ||
+    (card.columnId === "in_review" && card.status === "blocked");
+  if (canStart) {
     return { label: "开始质询", event: { type: "START_REVIEW", cardId: card.id } };
   }
   if (card.columnId === "in_review" && card.status === "running") {
@@ -20,9 +23,6 @@ const cardAction = (card: Card): { label: string; event: BoardEvent } | null => 
       label: "提交占位产出",
       event: { type: "SUBMIT_OUTPUT", cardId: card.id, valid: true, output: manualOutput },
     };
-  }
-  if (card.columnId === "awaiting_human" && card.status === "ready") {
-    return { label: "通过", event: { type: "CONFIRM", cardId: card.id } };
   }
   return null;
 };

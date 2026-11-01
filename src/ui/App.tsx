@@ -38,7 +38,9 @@ export const App = () => {
           onDispatch={dispatch}
           onOpenCard={setOpenCardId}
         />
-        {openCard ? <CardDrawer card={openCard} onClose={() => setOpenCardId(null)} /> : null}
+        {openCard ? (
+          <CardDrawer card={openCard} onClose={() => setOpenCardId(null)} onDispatch={dispatch} />
+        ) : null}
       </main>
     </div>
   );
