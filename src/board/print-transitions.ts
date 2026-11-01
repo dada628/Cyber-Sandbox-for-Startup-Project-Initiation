@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { assertFinanceVerdict, validateRoleOutput } from "../agents/validate-output";
 import { ContractError, type FounderInput } from "../agents/types";
+import { assertSynthesisGrounded, visibleContext } from "../orchestrator/grounding";
 import { reduceBoard } from "./state-machine";
 import {
   assertWorkflow,
@@ -264,7 +265,148 @@ try {
   fail();
 }
 
+const beforeDefense = cards;
+try {
+  reduceBoard(cards, { type: "START_REVIEW", cardId: "card_defense" });
+  fail();
+} catch (error) {
+  cards = beforeDefense;
+  if (!(error instanceof ContractError) || error.code !== "UNRESOLVED_DEPENDENCY") {
+    fail();
+  }
+  if (cards !== beforeDefense || cardById("card_defense").columnId !== "backlog") {
+    fail();
+  }
+  lines.push(`20 SYNTHESIS start-before-deps -> ${error.code}`);
+}
+
+const financeHoldOutput = {
+  assumptions: financeAssumptions,
+  missingNumbers: ["抽成比例", "单本履约成本"],
+  verdict: "保留",
+  evidenceRequests: [],
+};
+const targetUserOutput = {
+  scenario: "开学周，大二在宿舍群里求一本高数，两小时后消息被覆盖",
+  painReal: true,
+  habitChange: "不确定",
+  counterexample: "若书只要当天晚上用，对方更可能直接在现有群里回复，而不是改用小程序",
+  evidenceRequests: "10 名目标用户是否愿意为交接多走一步",
+};
+const competitorOutput = {
+  alternatives: [
+    { name: "闲鱼", source: null, status: "待证" },
+    { name: "学长学姐群", source: "立项摘录原文", status: "已给出来源" },
+  ],
+  differentiationHolds: null,
+  evidenceRequests: [],
+};
+const synthesisOutput = {
+  conclusion: "先补证据",
+  revisionTasks: [
+    { text: "补上同校教材支出的抽样来源", sourceCardId: "card_problem" },
+    { text: "写明服务费比例和单本成本", sourceCardId: "card_unit_economics" },
+  ],
+  likelyQuestions: [
+    "为什么学生不继续用学长群？",
+    "便宜的证据是什么？",
+    "闲鱼为什么不是替代？",
+    "服务费收多少？",
+    "没有数字时凭什么说风险可控？",
+  ],
+  citedCardIds: ["card_problem", "card_user", "card_competitor", "card_unit_economics", "card_risk"],
+};
+
+const settleCard = (cardId: string, output: unknown): void => {
+  const card = cardById(cardId);
+  validateRoleOutput(card.roleId, output);
+  if (card.roleId === "finance") {
+    assertFinanceVerdict(founder, output);
+  }
+  cards = reduceBoard(cards, { type: "START_REVIEW", cardId });
+  cards = reduceBoard(cards, {
+    type: "SUBMIT_OUTPUT",
+    cardId,
+    valid: true,
+    output: JSON.stringify(output),
+  });
+  cards = reduceBoard(cards, { type: "CONFIRM", cardId });
+};
+
+try {
+  settleCard("card_user", targetUserOutput);
+  settleCard("card_competitor", competitorOutput);
+  settleCard("card_unit_economics", financeHoldOutput);
+  settleCard("card_risk", investorFixture);
+  cards = reduceBoard(cards, { type: "START_REVIEW", cardId: "card_defense" });
+} catch {
+  fail();
+}
+const defensePlace = place(cardById("card_defense"));
+if (defensePlace !== "质询中 / 进行中") {
+  fail();
+}
+lines.push(`21 SYNTHESIS start-after-deps -> ${defensePlace}`);
+
+expectCheck(
+  22,
+  "SYNTHESIS cite-unknown",
+  () => {
+    assertSynthesisGrounded(
+      {
+        ...synthesisOutput,
+        citedCardIds: [...synthesisOutput.citedCardIds, "card_made_up"],
+      },
+      cards,
+    );
+  },
+  "UNCONFIRMED_CARD",
+);
+expectCheck(
+  23,
+  "SYNTHESIS cite-concluded",
+  () => {
+    assertSynthesisGrounded(synthesisOutput, cards);
+  },
+  "ok",
+);
+
+const failVisible = (): never => {
+  console.log("FAIL 0 VISIBLE_CONTEXT");
+  process.exit(1);
+};
+
+const fieldsMatch = (roleId: string, fields: readonly (keyof FounderInput)[]): boolean => {
+  const view = visibleContext(roleId, founder, cards);
+  const keys = Object.keys(view.founder);
+  if (keys.length !== fields.length) {
+    return false;
+  }
+  return fields.every((field) => Object.hasOwn(view.founder, field) && view.founder[field] === founder[field]);
+};
+
+const investorView = visibleContext("investor", founder, cards);
+const synthesisView = visibleContext("synthesis", founder, cards);
+const concluded = cards.filter((card) => card.columnId === "concluded");
+const visibleIds = synthesisView.confirmedCards.map((card) => card.id);
+const concludedIds = concluded.map((card) => card.id);
+const synthesisOnlyConcluded =
+  concludedIds.length > 0 &&
+  visibleIds.length === concludedIds.length &&
+  visibleIds.every((cardId, index) => cardId === concludedIds[index]) &&
+  synthesisView.confirmedCards.every((card) => card.columnId === "concluded");
+if (
+  !fieldsMatch("investor", ["oneLiner", "solution", "businessModel", "excerpt"]) ||
+  !fieldsMatch("target_user", ["targetUser", "solution", "excerpt"]) ||
+  !fieldsMatch("finance", ["businessModel", "excerpt"]) ||
+  !cards.some((card) => card.columnId === "concluded") ||
+  investorView.confirmedCards.length !== 0 ||
+  !synthesisOnlyConcluded
+) {
+  failVisible();
+}
+
 for (const line of lines) {
   console.log(line);
 }
-console.log("OK 19");
+console.log("OK 23");
