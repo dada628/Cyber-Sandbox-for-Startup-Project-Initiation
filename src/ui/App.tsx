@@ -3,7 +3,7 @@ import { useBoard } from "./useBoard";
 
 // 沙盘顶栏和四列看板
 export const App = () => {
-  const { cards, founder, loadSample } = useBoard();
+  const { cards, founder, errorCode, loadSample, dispatch } = useBoard();
   return (
     <div className="app">
       <header className="topbar">
@@ -23,7 +23,12 @@ export const App = () => {
         </button>
       </header>
       <main>
-        <Board cards={cards} />
+        {errorCode ? (
+          <p className="board-error" data-error={errorCode}>
+            {errorCode}
+          </p>
+        ) : null}
+        <Board cards={cards} onDispatch={dispatch} />
       </main>
     </div>
   );
