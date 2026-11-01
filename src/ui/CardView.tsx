@@ -10,32 +10,46 @@ interface CardViewProps {
 }
 
 const manualOutput = JSON.stringify({ note: "手工占位" });
+const invalidOutputReason = "输出不是合法 JSON";
 
-const cardAction = (card: Card): { label: string; event: BoardEvent } | null => {
+const blockText = (value: string | null): string => {
+  if (value && value.trim() !== "") {
+    return value;
+  }
+  return "无";
+};
+
+const cardActions = (card: Card): { label: string; event: BoardEvent }[] => {
   const canStart =
     (card.columnId === "backlog" && card.status === "idle") ||
     (card.columnId === "in_review" && card.status === "blocked");
   if (canStart) {
-    return { label: "开始质询", event: { type: "START_REVIEW", cardId: card.id } };
+    return [{ label: "开始质询", event: { type: "START_REVIEW", cardId: card.id } }];
   }
   if (card.columnId === "in_review" && card.status === "running") {
-    return {
-      label: "提交占位产出",
-      event: { type: "SUBMIT_OUTPUT", cardId: card.id, valid: true, output: manualOutput },
-    };
+    return [
+      {
+        label: "提交占位产出",
+        event: { type: "SUBMIT_OUTPUT", cardId: card.id, valid: true, output: manualOutput },
+      },
+      {
+        label: "提交失败",
+        event: { type: "SUBMIT_OUTPUT", cardId: card.id, valid: false, failureReason: invalidOutputReason },
+      },
+    ];
   }
-  return null;
+  if (card.columnId === "in_review" && card.status === "failed") {
+    return [{ label: "重试", event: { type: "RETRY", cardId: card.id } }];
+  }
+  return [];
 };
 
-// 卡片展示标题、角色、状态，并按当前状态派发一步
+// 卡片展示标题、角色、状态和阻塞原因，并按当前状态派发一步
 export const CardView = ({ card, selected, onDispatch, onOpen }: CardViewProps) => {
-  const action = cardAction(card);
-  const dispatchAction = (click: MouseEvent<HTMLButtonElement>): void => {
+  const actions = cardActions(card);
+  const dispatchAction = (event: BoardEvent) => (click: MouseEvent<HTMLButtonElement>): void => {
     click.stopPropagation();
-    if (!action) {
-      return;
-    }
-    onDispatch(action.event);
+    onDispatch(event);
   };
   const openCard = (click: MouseEvent<HTMLElement>): void => {
     if (click.target instanceof Element && click.target.closest("button")) {
@@ -65,11 +79,12 @@ export const CardView = ({ card, selected, onDispatch, onOpen }: CardViewProps) 
       <h3>{card.title}</h3>
       <p>{getRole(card.roleId).name}</p>
       <p>{statusLabel(card.status)}</p>
-      {action ? (
-        <button type="button" onClick={dispatchAction}>
+      <p>阻塞原因：{blockText(card.blockReason)}</p>
+      {actions.map((action) => (
+        <button key={action.label} type="button" onClick={dispatchAction(action.event)}>
           {action.label}
         </button>
-      ) : null}
+      ))}
     </article>
   );
 };
