@@ -60,6 +60,42 @@ export interface Card {
   sourceCardIds: string[];
 }
 
+// 看板状态机只接受这七种事件
+export type BoardEvent =
+  | {
+      readonly type: "CREATE";
+      readonly card: Card;
+    }
+  | {
+      readonly type: "START_REVIEW";
+      readonly cardId: string;
+    }
+  | {
+      readonly type: "SUBMIT_OUTPUT";
+      readonly cardId: string;
+      readonly valid: boolean;
+      readonly output?: string;
+      readonly failureReason?: string;
+    }
+  | {
+      readonly type: "CONFIRM";
+      readonly cardId: string;
+    }
+  | {
+      readonly type: "REJECT";
+      readonly cardId: string;
+      readonly reason: string;
+    }
+  | {
+      readonly type: "REVISE_FACT";
+      readonly cardId: string;
+      readonly fact: string;
+    }
+  | {
+      readonly type: "RETRY";
+      readonly cardId: string;
+    };
+
 const clipSummary = (summary: string): string => {
   if (summary.length <= SUMMARY_LIMIT) {
     return summary;
