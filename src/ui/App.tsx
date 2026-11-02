@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
+import type { BoardEvent } from "../board/types";
 import { modeBadge, type ModelMode } from "../model/mode";
+import { acceptInvestorRaw } from "../orchestrator/accept-investor";
 import { Board } from "./Board";
 import { CardDrawer } from "./CardDrawer";
 import { useBoard } from "./useBoard";
@@ -10,7 +12,7 @@ const isModelMode = (value: unknown): value is ModelMode => {
 
 // 沙盘顶栏和四列看板
 export const App = () => {
-  const { cards, founder, errorCode, loadSample, dispatch } = useBoard();
+  const { cards, founder, errorCode, loadSample, dispatch: boardDispatch } = useBoard();
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [mode, setMode] = useState<ModelMode>("replay");
   const [modelRaw, setModelRaw] = useState<Readonly<Record<string, string>>>({});
@@ -18,7 +20,20 @@ export const App = () => {
   const [runError, setRunError] = useState<string | null>(null);
   const runningRef = useRef(false);
   const openCard = cards.find((card) => card.id === openCardId) ?? null;
-  const runInvestor = (cardId: string): void => {
+  const dispatch = (event: BoardEvent): void => {
+    if (event.type === "RETRY") {
+      setModelRaw((current) => {
+        if (!(event.cardId in current)) {
+          return current;
+        }
+        const next = { ...current };
+        delete next[event.cardId];
+        return next;
+      });
+    }
+    boardDispatch(event);
+  };
+  const runInvestor = (cardId: string, forceInvalid: boolean): void => {
     if (runningRef.current) {
       return;
     }
@@ -29,7 +44,7 @@ export const App = () => {
       const response = await fetch("/api/run-investor", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cardId }),
+        body: JSON.stringify({ cardId, forceInvalid }),
       });
       const payload: unknown = await response.json();
       const code =
@@ -51,7 +66,14 @@ export const App = () => {
         setRunError("LIVE_CALL_FAILED");
         return;
       }
-      setModelRaw((current) => ({ ...current, [cardId]: payload.raw }));
+      const raw = payload.raw;
+      setModelRaw((current) => ({ ...current, [cardId]: raw }));
+      const accepted = acceptInvestorRaw(raw);
+      if (accepted.ok) {
+        dispatch({ type: "SUBMIT_OUTPUT", cardId, valid: true, output: JSON.stringify(accepted.value) });
+        return;
+      }
+      dispatch({ type: "SUBMIT_OUTPUT", cardId, valid: false, failureReason: accepted.failureReason });
     };
     void request()
       .catch(() => {
@@ -116,6 +138,7 @@ export const App = () => {
           cards={cards}
           openCardId={openCardId}
           runningCardId={runningCardId}
+          replay={mode === "replay"}
           onDispatch={dispatch}
           onOpenCard={setOpenCardId}
           onRunInvestor={runInvestor}

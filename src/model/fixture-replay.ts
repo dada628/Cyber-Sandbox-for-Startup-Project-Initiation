@@ -1,7 +1,16 @@
-const investorRaw =
-  "这个想法可以做。我建议把项目名改得更响，并把介绍文案写得更激动一些。市场肯定很大，先占住本校再说。";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
-// 没有密钥时，投资人固定回放这一段自由文本
+const readFixture = (name: string): string => {
+  return readFileSync(resolve(process.cwd(), "fixtures", name), "utf8");
+};
+
+// 没有密钥时，投资人回放合法 JSON 原文
 export const replayInvestorRaw = (): string => {
-  return investorRaw;
+  return readFixture("investor-valid.json");
+};
+
+// 回放格式失败时，投资人回放上一段自由文本
+export const replayInvestorInvalidRaw = (): string => {
+  return readFixture("investor-invalid.txt");
 };

@@ -8,6 +8,7 @@
   "scripts": {
     "check:contracts": "tsx src/board/print-transitions.ts",
     "check:model": "tsx src/model/print-mode.ts",
+    "check:investor": "tsx src/orchestrator/print-investor.ts",
     "dev": "vite"
   },
   "devDependencies": {

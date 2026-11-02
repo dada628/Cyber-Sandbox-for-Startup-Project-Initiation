@@ -5,13 +5,22 @@ interface BoardProps {
   cards: readonly Card[];
   openCardId: string | null;
   runningCardId: string | null;
+  replay: boolean;
   onDispatch: (event: BoardEvent) => void;
   onOpenCard: (cardId: string) => void;
-  onRunInvestor: (cardId: string) => void;
+  onRunInvestor: (cardId: string, forceInvalid: boolean) => void;
 }
 
 // 四列从左到右：待拆解、质询中、待你确认、已入结论
-export const Board = ({ cards, openCardId, runningCardId, onDispatch, onOpenCard, onRunInvestor }: BoardProps) => {
+export const Board = ({
+  cards,
+  openCardId,
+  runningCardId,
+  replay,
+  onDispatch,
+  onOpenCard,
+  onRunInvestor,
+}: BoardProps) => {
   return (
     <div className="board">
       {COLUMNS.map((column) => (
@@ -22,6 +31,7 @@ export const Board = ({ cards, openCardId, runningCardId, onDispatch, onOpenCard
           cards={cards.filter((card) => card.columnId === column.id)}
           openCardId={openCardId}
           runningCardId={runningCardId}
+          replay={replay}
           onDispatch={onDispatch}
           onOpenCard={onOpenCard}
           onRunInvestor={onRunInvestor}

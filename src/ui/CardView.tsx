@@ -6,9 +6,10 @@ interface CardViewProps {
   card: Card;
   selected: boolean;
   runPending: boolean;
+  replay: boolean;
   onDispatch: (event: BoardEvent) => void;
   onOpen: (cardId: string) => void;
-  onRunInvestor: (cardId: string) => void;
+  onRunInvestor: (cardId: string, forceInvalid: boolean) => void;
 }
 
 const manualOutput = JSON.stringify({ note: "手工占位" });
@@ -47,7 +48,7 @@ const cardActions = (card: Card): { label: string; event: BoardEvent }[] => {
 };
 
 // 卡片展示标题、角色、状态和阻塞原因，并按当前状态派发一步
-export const CardView = ({ card, selected, runPending, onDispatch, onOpen, onRunInvestor }: CardViewProps) => {
+export const CardView = ({ card, selected, runPending, replay, onDispatch, onOpen, onRunInvestor }: CardViewProps) => {
   const investorRunning = card.roleId === "investor" && card.columnId === "in_review" && card.status === "running";
   const actions = cardActions(card);
   const dispatchAction = (event: BoardEvent) => (click: MouseEvent<HTMLButtonElement>): void => {
@@ -60,7 +61,15 @@ export const CardView = ({ card, selected, runPending, onDispatch, onOpen, onRun
       return;
     }
     onOpen(card.id);
-    onRunInvestor(card.id);
+    onRunInvestor(card.id, false);
+  };
+  const replayInvalid = (click: MouseEvent<HTMLButtonElement>): void => {
+    click.stopPropagation();
+    if (runPending) {
+      return;
+    }
+    onOpen(card.id);
+    onRunInvestor(card.id, true);
   };
   const openCard = (click: MouseEvent<HTMLElement>): void => {
     if (click.target instanceof Element && click.target.closest("button")) {
@@ -94,6 +103,11 @@ export const CardView = ({ card, selected, runPending, onDispatch, onOpen, onRun
       {investorRunning ? (
         <button type="button" disabled={runPending} onClick={runInvestor}>
           运行投资人
+        </button>
+      ) : null}
+      {investorRunning && replay ? (
+        <button type="button" disabled={runPending} onClick={replayInvalid}>
+          回放格式失败
         </button>
       ) : null}
       {actions.map((action) => (

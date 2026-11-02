@@ -7,9 +7,10 @@ interface ColumnProps {
   cards: readonly Card[];
   openCardId: string | null;
   runningCardId: string | null;
+  replay: boolean;
   onDispatch: (event: BoardEvent) => void;
   onOpenCard: (cardId: string) => void;
-  onRunInvestor: (cardId: string) => void;
+  onRunInvestor: (cardId: string, forceInvalid: boolean) => void;
 }
 
 // 一列质询卡，空列仍占位，推进事件交给卡片
@@ -19,6 +20,7 @@ export const Column = ({
   cards,
   openCardId,
   runningCardId,
+  replay,
   onDispatch,
   onOpenCard,
   onRunInvestor,
@@ -38,6 +40,7 @@ export const Column = ({
               card={card}
               selected={card.id === openCardId}
               runPending={card.id === runningCardId}
+              replay={replay}
               onDispatch={onDispatch}
               onOpen={onOpenCard}
               onRunInvestor={onRunInvestor}

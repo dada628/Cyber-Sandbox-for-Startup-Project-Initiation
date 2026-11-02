@@ -5,7 +5,8 @@ import sampleProposal from "../../fixtures/sample-proposal.json";
 import { ContractError, type FounderInput } from "../agents/types";
 import { buildInitialCards } from "../board/types";
 import { createAdapter } from "../model/create-adapter";
-import type { ModelMode } from "../model/mode";
+import { replayInvestorInvalidRaw, replayInvestorRaw } from "../model/fixture-replay";
+import { selectMode, type ModelEnv, type ModelMode } from "../model/mode";
 import { assignmentFor } from "./assign";
 import { visibleContext } from "./grounding";
 
@@ -13,6 +14,21 @@ const systemPrompt = readFileSync(resolve(process.cwd(), "prompts/investor-syste
   /\r?\n$/,
   "",
 );
+
+// 有密钥时保持真实调用，回放才允许改用非法文本
+export const planInvestorCall = (
+  env: ModelEnv,
+  forceInvalid: boolean,
+): { mode: ModelMode; raw: string | null } => {
+  const mode = selectMode(env);
+  if (mode === "live") {
+    return { mode: "live", raw: null };
+  }
+  return {
+    mode: "replay",
+    raw: forceInvalid ? replayInvestorInvalidRaw() : replayInvestorRaw(),
+  };
+};
 
 // 按样例立项运行投资人，原样返回模型原文
 export const runInvestor = async (
@@ -29,8 +45,11 @@ export const runInvestor = async (
     throw new ContractError("NOT_INVESTOR_CARD", cardId);
   }
   const visible = visibleContext("investor", founder, []);
-  void forceInvalid;
   const env = loadEnv(process.env.NODE_ENV === "production" ? "production" : "development", process.cwd(), "");
+  const plan = planInvestorCall(env, forceInvalid);
+  if (plan.mode === "replay" && plan.raw !== null) {
+    return { mode: "replay", raw: plan.raw };
+  }
   const adapter = createAdapter(env);
   try {
     const raw = await adapter.complete([
