@@ -41,7 +41,7 @@ export const runInvestor = async (
     throw new ContractError("MISSING_CARD", cardId);
   }
   const assignment = assignmentFor(card);
-  if (assignment === null) {
+  if (assignment === null || assignment.roleId !== "investor") {
     throw new ContractError("NOT_INVESTOR_CARD", cardId);
   }
   const visible = visibleContext("investor", founder, []);

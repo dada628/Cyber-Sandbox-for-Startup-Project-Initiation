@@ -1,0 +1,17 @@
+{
+  "assumptions": [
+    {
+      "name": "出让方服务费",
+      "value": null,
+      "unit": null
+    },
+    {
+      "name": "单本履约成本",
+      "value": null,
+      "unit": null
+    }
+  ],
+  "missingNumbers": [],
+  "verdict": "通过",
+  "evidenceRequests": []
+}

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { BoardEvent } from "../board/types";
 import { modeBadge, type ModelMode } from "../model/mode";
+import { acceptFinanceRaw } from "../orchestrator/accept-finance";
 import { acceptInvestorRaw } from "../orchestrator/accept-investor";
 import { Board } from "./Board";
 import { CardDrawer } from "./CardDrawer";
@@ -8,6 +9,24 @@ import { useBoard } from "./useBoard";
 
 const isModelMode = (value: unknown): value is ModelMode => {
   return value === "replay" || value === "live";
+};
+
+const isRunReply = (payload: unknown): payload is { mode: ModelMode; raw: string } => {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "raw" in payload &&
+    typeof payload.raw === "string" &&
+    "mode" in payload &&
+    isModelMode(payload.mode)
+  );
+};
+
+const payloadCode = (payload: unknown): string => {
+  if (typeof payload === "object" && payload !== null && "code" in payload && typeof payload.code === "string") {
+    return payload.code;
+  }
+  return "";
 };
 
 // 沙盘顶栏和四列看板
@@ -47,22 +66,12 @@ export const App = () => {
         body: JSON.stringify({ cardId, forceInvalid }),
       });
       const payload: unknown = await response.json();
-      const code =
-        typeof payload === "object" && payload !== null && "code" in payload && typeof payload.code === "string"
-          ? payload.code
-          : "";
+      const code = payloadCode(payload);
       if (!response.ok) {
         setRunError(code === "" ? "LIVE_CALL_FAILED" : code);
         return;
       }
-      if (
-        typeof payload !== "object" ||
-        payload === null ||
-        !("raw" in payload) ||
-        typeof payload.raw !== "string" ||
-        !("mode" in payload) ||
-        !isModelMode(payload.mode)
-      ) {
+      if (!isRunReply(payload)) {
         setRunError("LIVE_CALL_FAILED");
         return;
       }
@@ -78,6 +87,47 @@ export const App = () => {
     void request()
       .catch(() => {
         setRunError("LIVE_CALL_FAILED");
+      })
+      .finally(() => {
+        runningRef.current = false;
+        setRunningCardId(null);
+      });
+  };
+  const runFinance = (cardId: string): void => {
+    if (runningRef.current) {
+      return;
+    }
+    runningRef.current = true;
+    setRunningCardId(cardId);
+    setRunError(null);
+    const request = async (): Promise<void> => {
+      const response = await fetch("/api/run-finance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cardId }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok || !isRunReply(payload)) {
+        const code = payloadCode(payload);
+        dispatch({
+          type: "SUBMIT_OUTPUT",
+          cardId,
+          valid: false,
+          failureReason: code === "LIVE_CALL_FAILED" ? "财务调用失败" : "输出不是合法 JSON",
+        });
+        return;
+      }
+      setModelRaw((current) => ({ ...current, [cardId]: payload.raw }));
+      const accepted = acceptFinanceRaw(payload.raw);
+      if (accepted.ok) {
+        dispatch({ type: "SUBMIT_OUTPUT", cardId, valid: true, output: JSON.stringify(accepted.value) });
+        return;
+      }
+      dispatch({ type: "SUBMIT_OUTPUT", cardId, valid: false, failureReason: accepted.failureReason });
+    };
+    void request()
+      .catch(() => {
+        dispatch({ type: "SUBMIT_OUTPUT", cardId, valid: false, failureReason: "输出不是合法 JSON" });
       })
       .finally(() => {
         runningRef.current = false;
@@ -142,6 +192,7 @@ export const App = () => {
           onDispatch={dispatch}
           onOpenCard={setOpenCardId}
           onRunInvestor={runInvestor}
+          onRunFinance={runFinance}
         />
         {openCard ? (
           <CardDrawer

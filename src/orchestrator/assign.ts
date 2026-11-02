@@ -1,6 +1,7 @@
 import type { Card } from "../board/types";
 
 const investorFocus = "市场是否成立；为什么现在做；凭什么赢" as const;
+const financeFocus = "单位经济、成本、现金流假设。没有价格、费率、客单或成本数字时不得给出通过" as const;
 
 export interface InvestorAssignment {
   roleId: "investor";
@@ -9,8 +10,28 @@ export interface InvestorAssignment {
   focus: typeof investorFocus;
 }
 
-// 只给投资人的问题定义和风险派质询任务，不写结论
-export const assignmentFor = (card: Card): InvestorAssignment | null => {
+export interface FinanceAssignment {
+  roleId: "finance";
+  cardId: string;
+  title: string;
+  focus: typeof financeFocus;
+}
+
+export type RoleAssignment = InvestorAssignment | FinanceAssignment;
+
+// 只派质询任务，投资人和财务都不写结论
+export const assignmentFor = (card: Card): RoleAssignment | null => {
+  if (card.roleId === "finance") {
+    if (card.id !== "card_unit_economics") {
+      return null;
+    }
+    return {
+      roleId: "finance",
+      cardId: card.id,
+      title: card.title,
+      focus: financeFocus,
+    };
+  }
   if (card.roleId !== "investor") {
     return null;
   }

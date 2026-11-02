@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getRole } from "../agents/roles";
 import type { BoardEvent, Card } from "../board/types";
+import { financeHoldNumbers } from "./finance-hold";
 
 interface CardDrawerProps {
   card: Card;
@@ -30,6 +31,8 @@ export const CardDrawer = ({ card, modelRaw, onClose, onDispatch }: CardDrawerPr
   const [fact, setFact] = useState("");
   const awaiting = card.columnId === "awaiting_human";
   const canConfirm = awaiting && card.status === "ready";
+  const holdNumbers = card.roleId === "finance" ? financeHoldNumbers(card.output) : [];
+  const confirmLabel = holdNumbers.length > 0 ? "确认这条保留" : "通过";
   const reject = (): void => {
     if (reason.trim() === "") {
       return;
@@ -62,11 +65,21 @@ export const CardDrawer = ({ card, modelRaw, onClose, onDispatch }: CardDrawerPr
         {modelRaw === null ? null : <pre>{modelRaw}</pre>}
       </div>
       <p>修订事实：{filled(card.revisionFact)}</p>
+      {holdNumbers.length === 0 ? null : (
+        <div className="drawer-output">
+          <p>要创始人补充的数字：</p>
+          <ul>
+            {holdNumbers.map((number) => (
+              <li key={number}>{number}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {awaiting ? (
         <div className="drawer-actions">
           {canConfirm ? (
             <button type="button" onClick={() => onDispatch({ type: "CONFIRM", cardId: card.id })}>
-              通过
+              {confirmLabel}
             </button>
           ) : null}
           <label className="drawer-field" htmlFor={`reject-${card.id}`}>

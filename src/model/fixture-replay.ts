@@ -14,3 +14,13 @@ export const replayInvestorRaw = (): string => {
 export const replayInvestorInvalidRaw = (): string => {
   return readFixture("investor-invalid.txt");
 };
+
+// 没有密钥时，财务回放合法保留 JSON 原文
+export const replayFinanceHoldRaw = (): string => {
+  return readFixture("finance-hold.json");
+};
+
+// 回放格式失败时，财务回放没有数字却给通过的原文
+export const replayFinanceIllegalRaw = (): string => {
+  return readFixture("finance-illegal-pass.json");
+};

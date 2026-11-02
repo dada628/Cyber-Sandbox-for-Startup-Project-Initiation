@@ -1,6 +1,7 @@
 import type { KeyboardEvent, MouseEvent } from "react";
 import { getRole } from "../agents/roles";
 import { statusLabel, type BoardEvent, type Card } from "../board/types";
+import { financeHoldNumbers } from "./finance-hold";
 
 interface CardViewProps {
   card: Card;
@@ -10,6 +11,7 @@ interface CardViewProps {
   onDispatch: (event: BoardEvent) => void;
   onOpen: (cardId: string) => void;
   onRunInvestor: (cardId: string, forceInvalid: boolean) => void;
+  onRunFinance: (cardId: string) => void;
 }
 
 const manualOutput = JSON.stringify({ note: "手工占位" });
@@ -29,7 +31,12 @@ const cardActions = (card: Card): { label: string; event: BoardEvent }[] => {
   if (canStart) {
     return [{ label: "开始质询", event: { type: "START_REVIEW", cardId: card.id } }];
   }
-  if (card.columnId === "in_review" && card.status === "running" && card.roleId !== "investor") {
+  if (
+    card.columnId === "in_review" &&
+    card.status === "running" &&
+    card.roleId !== "investor" &&
+    card.roleId !== "finance"
+  ) {
     return [
       {
         label: "提交占位产出",
@@ -48,8 +55,19 @@ const cardActions = (card: Card): { label: string; event: BoardEvent }[] => {
 };
 
 // 卡片展示标题、角色、状态和阻塞原因，并按当前状态派发一步
-export const CardView = ({ card, selected, runPending, replay, onDispatch, onOpen, onRunInvestor }: CardViewProps) => {
+export const CardView = ({
+  card,
+  selected,
+  runPending,
+  replay,
+  onDispatch,
+  onOpen,
+  onRunInvestor,
+  onRunFinance,
+}: CardViewProps) => {
   const investorRunning = card.roleId === "investor" && card.columnId === "in_review" && card.status === "running";
+  const financeRunning = card.roleId === "finance" && card.columnId === "in_review" && card.status === "running";
+  const holdNumbers = card.roleId === "finance" ? financeHoldNumbers(card.output) : [];
   const actions = cardActions(card);
   const dispatchAction = (event: BoardEvent) => (click: MouseEvent<HTMLButtonElement>): void => {
     click.stopPropagation();
@@ -70,6 +88,14 @@ export const CardView = ({ card, selected, runPending, replay, onDispatch, onOpe
     }
     onOpen(card.id);
     onRunInvestor(card.id, true);
+  };
+  const runFinance = (click: MouseEvent<HTMLButtonElement>): void => {
+    click.stopPropagation();
+    if (runPending) {
+      return;
+    }
+    onOpen(card.id);
+    onRunFinance(card.id);
   };
   const openCard = (click: MouseEvent<HTMLElement>): void => {
     if (click.target instanceof Element && click.target.closest("button")) {
@@ -100,6 +126,7 @@ export const CardView = ({ card, selected, runPending, replay, onDispatch, onOpe
       <p>{getRole(card.roleId).name}</p>
       <p>{statusLabel(card.status)}</p>
       <p>阻塞原因：{blockText(card.blockReason)}</p>
+      {holdNumbers.length === 0 ? null : <p className="card-hold">未给通过：{holdNumbers.join("、")}</p>}
       {investorRunning ? (
         <button type="button" disabled={runPending} onClick={runInvestor}>
           运行投资人
@@ -108,6 +135,11 @@ export const CardView = ({ card, selected, runPending, replay, onDispatch, onOpe
       {investorRunning && replay ? (
         <button type="button" disabled={runPending} onClick={replayInvalid}>
           回放格式失败
+        </button>
+      ) : null}
+      {financeRunning ? (
+        <button type="button" disabled={runPending} onClick={runFinance}>
+          运行财务
         </button>
       ) : null}
       {actions.map((action) => (
