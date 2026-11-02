@@ -1,6 +1,33 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv, type Plugin } from "vite";
+import { ContractError } from "./src/agents/types.ts";
 import { selectMode } from "./src/model/mode.ts";
+import { runInvestor } from "./src/orchestrator/run-investor.ts";
+
+const sendJson = (res: ServerResponse, status: number, body: unknown): void => {
+  res.statusCode = status;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  res.end(JSON.stringify(body));
+};
+
+const readJson = (req: IncomingMessage): Promise<unknown> => {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => {
+      chunks.push(chunk);
+    });
+    req.on("end", () => {
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+      } catch (error) {
+        reject(error);
+      }
+    });
+    req.on("error", reject);
+  });
+};
 
 const modelMode = (): Plugin => {
   return {
@@ -15,18 +42,50 @@ const modelMode = (): Plugin => {
         const env = loadEnv(server.config.mode, process.cwd(), "");
         const mode = selectMode(env);
         console.log(`model-mode ${mode}`);
-        const body = JSON.stringify({ mode });
-        res.statusCode = 200;
-        res.setHeader("Content-Type", "application/json; charset=utf-8");
-        res.setHeader("Cache-Control", "no-store");
-        res.end(body);
+        sendJson(res, 200, { mode });
+      });
+    },
+  };
+};
+
+const runInvestorRoute = (): Plugin => {
+  return {
+    name: "run-investor",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = (req.url ?? "").split("?")[0];
+        if (req.method !== "POST" || path !== "/api/run-investor") {
+          next();
+          return;
+        }
+        void (async () => {
+          try {
+            const payload = await readJson(req);
+            const cardId =
+              typeof payload === "object" && payload !== null && "cardId" in payload && typeof payload.cardId === "string"
+                ? payload.cardId
+                : "";
+            if (cardId === "") {
+              sendJson(res, 400, { code: "BAD_REQUEST" });
+              return;
+            }
+            const result = await runInvestor(cardId, false);
+            sendJson(res, 200, { mode: result.mode, raw: result.raw });
+          } catch (error) {
+            if (!(error instanceof ContractError)) {
+              sendJson(res, 400, { code: "BAD_REQUEST" });
+              return;
+            }
+            sendJson(res, error.code === "LIVE_CALL_FAILED" ? 502 : 400, { code: error.code });
+          }
+        })();
       });
     },
   };
 };
 
 export default defineConfig({
-  plugins: [react(), modelMode()],
+  plugins: [react(), modelMode(), runInvestorRoute()],
   server: {
     host: "127.0.0.1",
     port: 5173,

@@ -6,12 +6,23 @@ interface ColumnProps {
   label: string;
   cards: readonly Card[];
   openCardId: string | null;
+  runningCardId: string | null;
   onDispatch: (event: BoardEvent) => void;
   onOpenCard: (cardId: string) => void;
+  onRunInvestor: (cardId: string) => void;
 }
 
 // 一列质询卡，空列仍占位，推进事件交给卡片
-export const Column = ({ columnId, label, cards, openCardId, onDispatch, onOpenCard }: ColumnProps) => {
+export const Column = ({
+  columnId,
+  label,
+  cards,
+  openCardId,
+  runningCardId,
+  onDispatch,
+  onOpenCard,
+  onRunInvestor,
+}: ColumnProps) => {
   return (
     <section className="column" data-column={columnId}>
       <h2>
@@ -26,8 +37,10 @@ export const Column = ({ columnId, label, cards, openCardId, onDispatch, onOpenC
               key={card.id}
               card={card}
               selected={card.id === openCardId}
+              runPending={card.id === runningCardId}
               onDispatch={onDispatch}
               onOpen={onOpenCard}
+              onRunInvestor={onRunInvestor}
             />
           ))}
         </div>

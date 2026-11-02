@@ -5,8 +5,10 @@ import { statusLabel, type BoardEvent, type Card } from "../board/types";
 interface CardViewProps {
   card: Card;
   selected: boolean;
+  runPending: boolean;
   onDispatch: (event: BoardEvent) => void;
   onOpen: (cardId: string) => void;
+  onRunInvestor: (cardId: string) => void;
 }
 
 const manualOutput = JSON.stringify({ note: "手工占位" });
@@ -26,7 +28,7 @@ const cardActions = (card: Card): { label: string; event: BoardEvent }[] => {
   if (canStart) {
     return [{ label: "开始质询", event: { type: "START_REVIEW", cardId: card.id } }];
   }
-  if (card.columnId === "in_review" && card.status === "running") {
+  if (card.columnId === "in_review" && card.status === "running" && card.roleId !== "investor") {
     return [
       {
         label: "提交占位产出",
@@ -45,11 +47,20 @@ const cardActions = (card: Card): { label: string; event: BoardEvent }[] => {
 };
 
 // 卡片展示标题、角色、状态和阻塞原因，并按当前状态派发一步
-export const CardView = ({ card, selected, onDispatch, onOpen }: CardViewProps) => {
+export const CardView = ({ card, selected, runPending, onDispatch, onOpen, onRunInvestor }: CardViewProps) => {
+  const investorRunning = card.roleId === "investor" && card.columnId === "in_review" && card.status === "running";
   const actions = cardActions(card);
   const dispatchAction = (event: BoardEvent) => (click: MouseEvent<HTMLButtonElement>): void => {
     click.stopPropagation();
     onDispatch(event);
+  };
+  const runInvestor = (click: MouseEvent<HTMLButtonElement>): void => {
+    click.stopPropagation();
+    if (runPending) {
+      return;
+    }
+    onOpen(card.id);
+    onRunInvestor(card.id);
   };
   const openCard = (click: MouseEvent<HTMLElement>): void => {
     if (click.target instanceof Element && click.target.closest("button")) {
@@ -80,6 +91,11 @@ export const CardView = ({ card, selected, onDispatch, onOpen }: CardViewProps) 
       <p>{getRole(card.roleId).name}</p>
       <p>{statusLabel(card.status)}</p>
       <p>阻塞原因：{blockText(card.blockReason)}</p>
+      {investorRunning ? (
+        <button type="button" disabled={runPending} onClick={runInvestor}>
+          运行投资人
+        </button>
+      ) : null}
       {actions.map((action) => (
         <button key={action.label} type="button" onClick={dispatchAction(action.event)}>
           {action.label}

@@ -4,6 +4,7 @@ import type { BoardEvent, Card } from "../board/types";
 
 interface CardDrawerProps {
   card: Card;
+  modelRaw: string | null;
   onClose: () => void;
   onDispatch: (event: BoardEvent) => void;
 }
@@ -24,7 +25,7 @@ const filled = (value: string | null): string => {
 };
 
 // 回读当前卡片，并在待你确认时派发通过、驳回或改事实
-export const CardDrawer = ({ card, onClose, onDispatch }: CardDrawerProps) => {
+export const CardDrawer = ({ card, modelRaw, onClose, onDispatch }: CardDrawerProps) => {
   const [reason, setReason] = useState("");
   const [fact, setFact] = useState("");
   const awaiting = card.columnId === "awaiting_human";
@@ -55,6 +56,10 @@ export const CardDrawer = ({ card, onClose, onDispatch }: CardDrawerProps) => {
       <div className="drawer-output">
         <p>产出：{card.output === null ? "尚无产出" : ""}</p>
         {card.output === null ? null : <pre>{formatOutput(card.output)}</pre>}
+      </div>
+      <div className="drawer-output">
+        <p>模型原文：{modelRaw === null ? "无" : ""}</p>
+        {modelRaw === null ? null : <pre>{modelRaw}</pre>}
       </div>
       <p>修订事实：{filled(card.revisionFact)}</p>
       {awaiting ? (

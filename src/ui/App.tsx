@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { modeBadge, type ModelMode } from "../model/mode";
 import { Board } from "./Board";
 import { CardDrawer } from "./CardDrawer";
@@ -13,7 +13,55 @@ export const App = () => {
   const { cards, founder, errorCode, loadSample, dispatch } = useBoard();
   const [openCardId, setOpenCardId] = useState<string | null>(null);
   const [mode, setMode] = useState<ModelMode>("replay");
+  const [modelRaw, setModelRaw] = useState<Readonly<Record<string, string>>>({});
+  const [runningCardId, setRunningCardId] = useState<string | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+  const runningRef = useRef(false);
   const openCard = cards.find((card) => card.id === openCardId) ?? null;
+  const runInvestor = (cardId: string): void => {
+    if (runningRef.current) {
+      return;
+    }
+    runningRef.current = true;
+    setRunningCardId(cardId);
+    setRunError(null);
+    const request = async (): Promise<void> => {
+      const response = await fetch("/api/run-investor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cardId }),
+      });
+      const payload: unknown = await response.json();
+      const code =
+        typeof payload === "object" && payload !== null && "code" in payload && typeof payload.code === "string"
+          ? payload.code
+          : "";
+      if (!response.ok) {
+        setRunError(code === "" ? "LIVE_CALL_FAILED" : code);
+        return;
+      }
+      if (
+        typeof payload !== "object" ||
+        payload === null ||
+        !("raw" in payload) ||
+        typeof payload.raw !== "string" ||
+        !("mode" in payload) ||
+        !isModelMode(payload.mode)
+      ) {
+        setRunError("LIVE_CALL_FAILED");
+        return;
+      }
+      setModelRaw((current) => ({ ...current, [cardId]: payload.raw }));
+    };
+    void request()
+      .catch(() => {
+        setRunError("LIVE_CALL_FAILED");
+      })
+      .finally(() => {
+        runningRef.current = false;
+        setRunningCardId(null);
+      });
+  };
   useEffect(() => {
     let active = true;
     const loadMode = async (): Promise<void> => {
@@ -59,14 +107,26 @@ export const App = () => {
             {errorCode}
           </p>
         ) : null}
+        {runError ? (
+          <p className="board-error" data-error={runError}>
+            {runError}
+          </p>
+        ) : null}
         <Board
           cards={cards}
           openCardId={openCardId}
+          runningCardId={runningCardId}
           onDispatch={dispatch}
           onOpenCard={setOpenCardId}
+          onRunInvestor={runInvestor}
         />
         {openCard ? (
-          <CardDrawer card={openCard} onClose={() => setOpenCardId(null)} onDispatch={dispatch} />
+          <CardDrawer
+            card={openCard}
+            modelRaw={modelRaw[openCard.id] ?? null}
+            onClose={() => setOpenCardId(null)}
+            onDispatch={dispatch}
+          />
         ) : null}
       </main>
     </div>
