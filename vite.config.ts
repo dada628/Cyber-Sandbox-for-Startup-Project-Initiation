@@ -1,5 +1,5 @@
 import react from "@vitejs/plugin-react";
-import { defineConfig, type Plugin } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import { selectMode } from "./src/model/mode.ts";
 
 const modelMode = (): Plugin => {
@@ -12,7 +12,10 @@ const modelMode = (): Plugin => {
           next();
           return;
         }
-        const body = JSON.stringify({ mode: selectMode(process.env) });
+        const env = loadEnv(server.config.mode, process.cwd(), "");
+        const mode = selectMode(env);
+        console.log(`model-mode ${mode}`);
+        const body = JSON.stringify({ mode });
         res.statusCode = 200;
         res.setHeader("Content-Type", "application/json; charset=utf-8");
         res.setHeader("Cache-Control", "no-store");
