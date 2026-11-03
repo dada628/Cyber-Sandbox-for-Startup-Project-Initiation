@@ -1,0 +1,17 @@
+{
+  "conclusion": "建议推进",
+  "revisionTasks": [
+    {
+      "text": "按本校月活 2 万安排推广",
+      "sourceCardId": "card_made_up"
+    }
+  ],
+  "likelyQuestions": [
+    "为什么学生不继续用学长群？",
+    "便宜的证据是什么？",
+    "闲鱼为什么不是替代？",
+    "服务费收多少？",
+    "没有数字时凭什么说风险可控？"
+  ],
+  "citedCardIds": ["card_problem", "card_made_up"]
+}

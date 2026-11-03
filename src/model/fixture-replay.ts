@@ -34,3 +34,8 @@ export const replayUserValidRaw = (): string => {
 export const replayCompetitorValidRaw = (): string => {
   return readFixture("competitor-valid.json");
 };
+
+// 没有密钥时，综合席回放编造过的 JSON 原文
+export const replaySynthesisInventedRaw = (): string => {
+  return readFixture("synthesis-invented.json");
+};

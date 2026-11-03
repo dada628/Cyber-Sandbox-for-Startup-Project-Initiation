@@ -218,6 +218,37 @@ export const App = () => {
         setRunningCardId(null);
       });
   };
+  const runSynthesis = (cardId: string): void => {
+    if (runningRef.current) {
+      return;
+    }
+    runningRef.current = true;
+    setRunningCardId(cardId);
+    setRunError(null);
+    const board = cards;
+    const request = async (): Promise<void> => {
+      const response = await fetch("/api/run-synthesis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cardId, cards: board }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok || !isRunReply(payload)) {
+        const code = payloadCode(payload);
+        setRunError(code === "" ? "LIVE_CALL_FAILED" : code);
+        return;
+      }
+      setModelRaw((current) => ({ ...current, [cardId]: payload.raw }));
+    };
+    void request()
+      .catch(() => {
+        setRunError("LIVE_CALL_FAILED");
+      })
+      .finally(() => {
+        runningRef.current = false;
+        setRunningCardId(null);
+      });
+  };
   useEffect(() => {
     let active = true;
     const loadMode = async (): Promise<void> => {
@@ -279,6 +310,7 @@ export const App = () => {
           onRunFinance={runFinance}
           onRunUser={runUser}
           onRunCompetitor={runCompetitor}
+          onRunSynthesis={runSynthesis}
         />
         {openCard ? (
           <CardDrawer

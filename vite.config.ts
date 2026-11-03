@@ -6,6 +6,7 @@ import { selectMode } from "./src/model/mode.ts";
 import { runFinance } from "./src/orchestrator/run-finance.ts";
 import { runInvestor } from "./src/orchestrator/run-investor.ts";
 import { runCompetitor } from "./src/orchestrator/run-competitor.ts";
+import { boardCardsFromPayload, runSynthesis } from "./src/orchestrator/run-synthesis.ts";
 import { runUser } from "./src/orchestrator/run-user.ts";
 
 const sendJson = (res: ServerResponse, status: number, body: unknown): void => {
@@ -199,8 +200,52 @@ const runCompetitorRoute = (): Plugin => {
   };
 };
 
+const runSynthesisRoute = (): Plugin => {
+  return {
+    name: "run-synthesis",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = (req.url ?? "").split("?")[0];
+        if (req.method !== "POST" || path !== "/api/run-synthesis") {
+          next();
+          return;
+        }
+        void (async () => {
+          try {
+            const payload = await readJson(req);
+            const cardId =
+              typeof payload === "object" && payload !== null && "cardId" in payload && typeof payload.cardId === "string"
+                ? payload.cardId
+                : "";
+            if (cardId === "") {
+              sendJson(res, 400, { code: "BAD_REQUEST" });
+              return;
+            }
+            const result = await runSynthesis(cardId, boardCardsFromPayload(payload));
+            sendJson(res, 200, { mode: result.mode, raw: result.raw });
+          } catch (error) {
+            if (!(error instanceof ContractError)) {
+              sendJson(res, 400, { code: "BAD_REQUEST" });
+              return;
+            }
+            sendJson(res, error.code === "LIVE_CALL_FAILED" ? 502 : 400, { code: error.code });
+          }
+        })();
+      });
+    },
+  };
+};
+
 export default defineConfig({
-  plugins: [react(), modelMode(), runInvestorRoute(), runFinanceRoute(), runUserRoute(), runCompetitorRoute()],
+  plugins: [
+    react(),
+    modelMode(),
+    runInvestorRoute(),
+    runFinanceRoute(),
+    runUserRoute(),
+    runCompetitorRoute(),
+    runSynthesisRoute(),
+  ],
   server: {
     host: "127.0.0.1",
     port: 5173,
