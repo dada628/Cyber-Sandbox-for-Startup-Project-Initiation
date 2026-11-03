@@ -1,0 +1,16 @@
+{
+  "alternatives": [
+    {
+      "name": "闲鱼",
+      "source": null,
+      "status": "待证"
+    },
+    {
+      "name": "学长学姐群",
+      "source": "立项摘录原文",
+      "status": "已给出来源"
+    }
+  ],
+  "differentiationHolds": null,
+  "evidenceRequests": ["闲鱼在同校教材类目的替代证据"]
+}

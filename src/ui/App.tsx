@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { BoardEvent } from "../board/types";
 import { modeBadge, type ModelMode } from "../model/mode";
+import { acceptCompetitorRaw } from "../orchestrator/accept-competitor";
 import { acceptFinanceRaw } from "../orchestrator/accept-finance";
 import { acceptInvestorRaw } from "../orchestrator/accept-investor";
 import { acceptUserRaw } from "../orchestrator/accept-user";
@@ -176,6 +177,47 @@ export const App = () => {
         setRunningCardId(null);
       });
   };
+  const runCompetitor = (cardId: string): void => {
+    if (runningRef.current) {
+      return;
+    }
+    runningRef.current = true;
+    setRunningCardId(cardId);
+    setRunError(null);
+    const request = async (): Promise<void> => {
+      const response = await fetch("/api/run-competitor", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cardId }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok || !isRunReply(payload)) {
+        const code = payloadCode(payload);
+        dispatch({
+          type: "SUBMIT_OUTPUT",
+          cardId,
+          valid: false,
+          failureReason: code === "LIVE_CALL_FAILED" ? "竞品调用失败" : "输出不是合法 JSON",
+        });
+        return;
+      }
+      setModelRaw((current) => ({ ...current, [cardId]: payload.raw }));
+      const accepted = acceptCompetitorRaw(payload.raw);
+      if (accepted.ok) {
+        dispatch({ type: "SUBMIT_OUTPUT", cardId, valid: true, output: JSON.stringify(accepted.value) });
+        return;
+      }
+      dispatch({ type: "SUBMIT_OUTPUT", cardId, valid: false, failureReason: accepted.failureReason });
+    };
+    void request()
+      .catch(() => {
+        dispatch({ type: "SUBMIT_OUTPUT", cardId, valid: false, failureReason: "输出不是合法 JSON" });
+      })
+      .finally(() => {
+        runningRef.current = false;
+        setRunningCardId(null);
+      });
+  };
   useEffect(() => {
     let active = true;
     const loadMode = async (): Promise<void> => {
@@ -236,6 +278,7 @@ export const App = () => {
           onRunInvestor={runInvestor}
           onRunFinance={runFinance}
           onRunUser={runUser}
+          onRunCompetitor={runCompetitor}
         />
         {openCard ? (
           <CardDrawer

@@ -3,6 +3,7 @@ import type { Card } from "../board/types";
 const investorFocus = "市场是否成立；为什么现在做；凭什么赢" as const;
 const financeFocus = "单位经济、成本、现金流假设。没有价格、费率、客单或成本数字时不得给出通过" as const;
 const userFocus = "痛是否真实，是否愿意改变现有习惯。不谈估值" as const;
+const competitorFocus = "替代方案和差异。没有来源就标待证，不编造份额或交易额" as const;
 
 export interface InvestorAssignment {
   roleId: "investor";
@@ -25,9 +26,16 @@ export interface TargetUserAssignment {
   focus: typeof userFocus;
 }
 
-export type RoleAssignment = InvestorAssignment | FinanceAssignment | TargetUserAssignment;
+export interface CompetitorAssignment {
+  roleId: "competitor";
+  cardId: string;
+  title: string;
+  focus: typeof competitorFocus;
+}
 
-// 只派质询任务，投资人、财务和目标用户都不写结论
+export type RoleAssignment = InvestorAssignment | FinanceAssignment | TargetUserAssignment | CompetitorAssignment;
+
+// 只派质询任务，投资人、财务、目标用户和竞品都不写结论
 export const assignmentFor = (card: Card): RoleAssignment | null => {
   if (card.roleId === "finance") {
     if (card.id !== "card_unit_economics") {
@@ -49,6 +57,17 @@ export const assignmentFor = (card: Card): RoleAssignment | null => {
       cardId: card.id,
       title: card.title,
       focus: userFocus,
+    };
+  }
+  if (card.roleId === "competitor") {
+    if (card.id !== "card_competitor") {
+      return null;
+    }
+    return {
+      roleId: "competitor",
+      cardId: card.id,
+      title: card.title,
+      focus: competitorFocus,
     };
   }
   if (card.roleId !== "investor") {

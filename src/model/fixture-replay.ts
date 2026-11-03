@@ -29,3 +29,8 @@ export const replayFinanceIllegalRaw = (): string => {
 export const replayUserValidRaw = (): string => {
   return readFixture("user-valid.json");
 };
+
+// 没有密钥时，竞品回放合法待证 JSON 原文
+export const replayCompetitorValidRaw = (): string => {
+  return readFixture("competitor-valid.json");
+};

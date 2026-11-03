@@ -11,6 +11,7 @@
     "check:investor": "tsx src/orchestrator/print-investor.ts",
     "check:finance": "tsx src/orchestrator/print-finance.ts",
     "check:user": "tsx src/orchestrator/print-user.ts",
+    "check:competitor": "tsx src/orchestrator/print-competitor.ts",
     "dev": "vite"
   },
   "devDependencies": {

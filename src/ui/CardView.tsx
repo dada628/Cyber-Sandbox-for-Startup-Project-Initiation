@@ -1,6 +1,7 @@
 import type { KeyboardEvent, MouseEvent } from "react";
 import { getRole } from "../agents/roles";
 import { statusLabel, type BoardEvent, type Card } from "../board/types";
+import { competitorPendingNames } from "./competitor-pending";
 import { financeHoldNumbers } from "./finance-hold";
 import { userHabitChange } from "./user-habit";
 
@@ -14,6 +15,7 @@ interface CardViewProps {
   onRunInvestor: (cardId: string, forceInvalid: boolean) => void;
   onRunFinance: (cardId: string) => void;
   onRunUser: (cardId: string) => void;
+  onRunCompetitor: (cardId: string) => void;
 }
 
 const manualOutput = JSON.stringify({ note: "手工占位" });
@@ -38,7 +40,8 @@ const cardActions = (card: Card): { label: string; event: BoardEvent }[] => {
     card.status === "running" &&
     card.roleId !== "investor" &&
     card.roleId !== "finance" &&
-    card.roleId !== "target_user"
+    card.roleId !== "target_user" &&
+    card.roleId !== "competitor"
   ) {
     return [
       {
@@ -68,12 +71,15 @@ export const CardView = ({
   onRunInvestor,
   onRunFinance,
   onRunUser,
+  onRunCompetitor,
 }: CardViewProps) => {
   const investorRunning = card.roleId === "investor" && card.columnId === "in_review" && card.status === "running";
   const financeRunning = card.roleId === "finance" && card.columnId === "in_review" && card.status === "running";
   const userRunning = card.roleId === "target_user" && card.columnId === "in_review" && card.status === "running";
+  const competitorRunning = card.roleId === "competitor" && card.columnId === "in_review" && card.status === "running";
   const holdNumbers = card.roleId === "finance" ? financeHoldNumbers(card.output) : [];
   const habitChange = card.roleId === "target_user" ? userHabitChange(card.output) : null;
+  const pendingNames = card.roleId === "competitor" ? competitorPendingNames(card.output) : [];
   const actions = cardActions(card);
   const dispatchAction = (event: BoardEvent) => (click: MouseEvent<HTMLButtonElement>): void => {
     click.stopPropagation();
@@ -111,6 +117,14 @@ export const CardView = ({
     onOpen(card.id);
     onRunUser(card.id);
   };
+  const runCompetitor = (click: MouseEvent<HTMLButtonElement>): void => {
+    click.stopPropagation();
+    if (runPending) {
+      return;
+    }
+    onOpen(card.id);
+    onRunCompetitor(card.id);
+  };
   const openCard = (click: MouseEvent<HTMLElement>): void => {
     if (click.target instanceof Element && click.target.closest("button")) {
       return;
@@ -142,6 +156,7 @@ export const CardView = ({
       <p>阻塞原因：{blockText(card.blockReason)}</p>
       {holdNumbers.length === 0 ? null : <p className="card-hold">未给通过：{holdNumbers.join("、")}</p>}
       {habitChange === null ? null : <p className="card-hold">习惯：{habitChange}</p>}
+      {pendingNames.length === 0 ? null : <p className="card-hold">待证：{pendingNames.join("、")}</p>}
       {investorRunning ? (
         <button type="button" disabled={runPending} onClick={runInvestor}>
           运行投资人
@@ -160,6 +175,11 @@ export const CardView = ({
       {userRunning ? (
         <button type="button" disabled={runPending} onClick={runUser}>
           运行目标用户
+        </button>
+      ) : null}
+      {competitorRunning ? (
+        <button type="button" disabled={runPending} onClick={runCompetitor}>
+          运行竞品
         </button>
       ) : null}
       {actions.map((action) => (
