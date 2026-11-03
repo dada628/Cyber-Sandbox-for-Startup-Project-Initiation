@@ -12,6 +12,7 @@ interface ColumnProps {
   onOpenCard: (cardId: string) => void;
   onRunInvestor: (cardId: string, forceInvalid: boolean) => void;
   onRunFinance: (cardId: string) => void;
+  onRunUser: (cardId: string) => void;
 }
 
 // 一列质询卡，空列仍占位，推进事件交给卡片
@@ -26,6 +27,7 @@ export const Column = ({
   onOpenCard,
   onRunInvestor,
   onRunFinance,
+  onRunUser,
 }: ColumnProps) => {
   return (
     <section className="column" data-column={columnId}>
@@ -47,6 +49,7 @@ export const Column = ({
               onOpen={onOpenCard}
               onRunInvestor={onRunInvestor}
               onRunFinance={onRunFinance}
+              onRunUser={onRunUser}
             />
           ))}
         </div>

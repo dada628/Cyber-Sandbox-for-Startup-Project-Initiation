@@ -10,6 +10,7 @@ interface BoardProps {
   onOpenCard: (cardId: string) => void;
   onRunInvestor: (cardId: string, forceInvalid: boolean) => void;
   onRunFinance: (cardId: string) => void;
+  onRunUser: (cardId: string) => void;
 }
 
 // 四列从左到右：待拆解、质询中、待你确认、已入结论
@@ -22,6 +23,7 @@ export const Board = ({
   onOpenCard,
   onRunInvestor,
   onRunFinance,
+  onRunUser,
 }: BoardProps) => {
   return (
     <div className="board">
@@ -38,6 +40,7 @@ export const Board = ({
           onOpenCard={onOpenCard}
           onRunInvestor={onRunInvestor}
           onRunFinance={onRunFinance}
+          onRunUser={onRunUser}
         />
       ))}
     </div>

@@ -2,6 +2,7 @@ import type { KeyboardEvent, MouseEvent } from "react";
 import { getRole } from "../agents/roles";
 import { statusLabel, type BoardEvent, type Card } from "../board/types";
 import { financeHoldNumbers } from "./finance-hold";
+import { userHabitChange } from "./user-habit";
 
 interface CardViewProps {
   card: Card;
@@ -12,6 +13,7 @@ interface CardViewProps {
   onOpen: (cardId: string) => void;
   onRunInvestor: (cardId: string, forceInvalid: boolean) => void;
   onRunFinance: (cardId: string) => void;
+  onRunUser: (cardId: string) => void;
 }
 
 const manualOutput = JSON.stringify({ note: "手工占位" });
@@ -35,7 +37,8 @@ const cardActions = (card: Card): { label: string; event: BoardEvent }[] => {
     card.columnId === "in_review" &&
     card.status === "running" &&
     card.roleId !== "investor" &&
-    card.roleId !== "finance"
+    card.roleId !== "finance" &&
+    card.roleId !== "target_user"
   ) {
     return [
       {
@@ -64,10 +67,13 @@ export const CardView = ({
   onOpen,
   onRunInvestor,
   onRunFinance,
+  onRunUser,
 }: CardViewProps) => {
   const investorRunning = card.roleId === "investor" && card.columnId === "in_review" && card.status === "running";
   const financeRunning = card.roleId === "finance" && card.columnId === "in_review" && card.status === "running";
+  const userRunning = card.roleId === "target_user" && card.columnId === "in_review" && card.status === "running";
   const holdNumbers = card.roleId === "finance" ? financeHoldNumbers(card.output) : [];
+  const habitChange = card.roleId === "target_user" ? userHabitChange(card.output) : null;
   const actions = cardActions(card);
   const dispatchAction = (event: BoardEvent) => (click: MouseEvent<HTMLButtonElement>): void => {
     click.stopPropagation();
@@ -96,6 +102,14 @@ export const CardView = ({
     }
     onOpen(card.id);
     onRunFinance(card.id);
+  };
+  const runUser = (click: MouseEvent<HTMLButtonElement>): void => {
+    click.stopPropagation();
+    if (runPending) {
+      return;
+    }
+    onOpen(card.id);
+    onRunUser(card.id);
   };
   const openCard = (click: MouseEvent<HTMLElement>): void => {
     if (click.target instanceof Element && click.target.closest("button")) {
@@ -127,6 +141,7 @@ export const CardView = ({
       <p>{statusLabel(card.status)}</p>
       <p>阻塞原因：{blockText(card.blockReason)}</p>
       {holdNumbers.length === 0 ? null : <p className="card-hold">未给通过：{holdNumbers.join("、")}</p>}
+      {habitChange === null ? null : <p className="card-hold">习惯：{habitChange}</p>}
       {investorRunning ? (
         <button type="button" disabled={runPending} onClick={runInvestor}>
           运行投资人
@@ -140,6 +155,11 @@ export const CardView = ({
       {financeRunning ? (
         <button type="button" disabled={runPending} onClick={runFinance}>
           运行财务
+        </button>
+      ) : null}
+      {userRunning ? (
+        <button type="button" disabled={runPending} onClick={runUser}>
+          运行目标用户
         </button>
       ) : null}
       {actions.map((action) => (

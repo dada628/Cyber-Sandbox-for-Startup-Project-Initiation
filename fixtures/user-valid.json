@@ -1,0 +1,7 @@
+{
+  "scenario": "开学周，大二在宿舍群里求一本高数，两小时后消息被覆盖",
+  "painReal": true,
+  "habitChange": "不确定",
+  "counterexample": "若书只要当天晚上用，对方更可能直接在现有群里回复，而不是改用小程序",
+  "evidenceRequests": ["10 名目标用户是否愿意为交接多走一步"]
+}

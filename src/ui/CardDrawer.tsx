@@ -2,6 +2,7 @@ import { useState } from "react";
 import { getRole } from "../agents/roles";
 import type { BoardEvent, Card } from "../board/types";
 import { financeHoldNumbers } from "./finance-hold";
+import { userScenarioView } from "./user-habit";
 
 interface CardDrawerProps {
   card: Card;
@@ -32,6 +33,7 @@ export const CardDrawer = ({ card, modelRaw, onClose, onDispatch }: CardDrawerPr
   const awaiting = card.columnId === "awaiting_human";
   const canConfirm = awaiting && card.status === "ready";
   const holdNumbers = card.roleId === "finance" ? financeHoldNumbers(card.output) : [];
+  const scenarioView = card.roleId === "target_user" ? userScenarioView(card.output) : null;
   const confirmLabel = holdNumbers.length > 0 ? "确认这条保留" : "通过";
   const reject = (): void => {
     if (reason.trim() === "") {
@@ -73,6 +75,12 @@ export const CardDrawer = ({ card, modelRaw, onClose, onDispatch }: CardDrawerPr
               <li key={number}>{number}</li>
             ))}
           </ul>
+        </div>
+      )}
+      {scenarioView === null ? null : (
+        <div className="drawer-output">
+          <p>scenario：{scenarioView.scenario}</p>
+          <p>counterexample：{scenarioView.counterexample}</p>
         </div>
       )}
       {awaiting ? (

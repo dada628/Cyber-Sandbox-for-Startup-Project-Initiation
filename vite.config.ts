@@ -5,6 +5,7 @@ import { ContractError } from "./src/agents/types.ts";
 import { selectMode } from "./src/model/mode.ts";
 import { runFinance } from "./src/orchestrator/run-finance.ts";
 import { runInvestor } from "./src/orchestrator/run-investor.ts";
+import { runUser } from "./src/orchestrator/run-user.ts";
 
 const sendJson = (res: ServerResponse, status: number, body: unknown): void => {
   res.statusCode = status;
@@ -125,8 +126,44 @@ const runFinanceRoute = (): Plugin => {
   };
 };
 
+const runUserRoute = (): Plugin => {
+  return {
+    name: "run-user",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const path = (req.url ?? "").split("?")[0];
+        if (req.method !== "POST" || path !== "/api/run-user") {
+          next();
+          return;
+        }
+        void (async () => {
+          try {
+            const payload = await readJson(req);
+            const cardId =
+              typeof payload === "object" && payload !== null && "cardId" in payload && typeof payload.cardId === "string"
+                ? payload.cardId
+                : "";
+            if (cardId === "") {
+              sendJson(res, 400, { code: "BAD_REQUEST" });
+              return;
+            }
+            const result = await runUser(cardId);
+            sendJson(res, 200, { mode: result.mode, raw: result.raw });
+          } catch (error) {
+            if (!(error instanceof ContractError)) {
+              sendJson(res, 400, { code: "BAD_REQUEST" });
+              return;
+            }
+            sendJson(res, error.code === "LIVE_CALL_FAILED" ? 502 : 400, { code: error.code });
+          }
+        })();
+      });
+    },
+  };
+};
+
 export default defineConfig({
-  plugins: [react(), modelMode(), runInvestorRoute(), runFinanceRoute()],
+  plugins: [react(), modelMode(), runInvestorRoute(), runFinanceRoute(), runUserRoute()],
   server: {
     host: "127.0.0.1",
     port: 5173,

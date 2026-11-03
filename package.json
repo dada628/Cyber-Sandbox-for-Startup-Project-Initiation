@@ -10,6 +10,7 @@
     "check:model": "tsx src/model/print-mode.ts",
     "check:investor": "tsx src/orchestrator/print-investor.ts",
     "check:finance": "tsx src/orchestrator/print-finance.ts",
+    "check:user": "tsx src/orchestrator/print-user.ts",
     "dev": "vite"
   },
   "devDependencies": {

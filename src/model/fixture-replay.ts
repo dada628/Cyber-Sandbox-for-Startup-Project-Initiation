@@ -24,3 +24,8 @@ export const replayFinanceHoldRaw = (): string => {
 export const replayFinanceIllegalRaw = (): string => {
   return readFixture("finance-illegal-pass.json");
 };
+
+// 没有密钥时，目标用户回放合法 JSON 原文
+export const replayUserValidRaw = (): string => {
+  return readFixture("user-valid.json");
+};
