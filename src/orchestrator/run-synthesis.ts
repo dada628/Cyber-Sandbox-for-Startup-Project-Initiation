@@ -5,7 +5,7 @@ import sampleProposal from "../../fixtures/sample-proposal.json";
 import { ContractError, type FounderInput, type RoleId } from "../agents/types";
 import { buildInitialCards, type Card, type CardStatus, type ColumnId } from "../board/types";
 import { createAdapter } from "../model/create-adapter";
-import { replaySynthesisInventedRaw } from "../model/fixture-replay";
+import { replaySynthesisGroundedRaw, replaySynthesisInventedRaw } from "../model/fixture-replay";
 import { selectMode, type ModelEnv, type ModelMode } from "../model/mode";
 import { assignmentFor } from "./assign";
 import { visibleContext } from "./grounding";
@@ -70,15 +70,18 @@ const readCard = (value: unknown): Card | null => {
   };
 };
 
-// 有密钥时保持真实调用，回放只给编造过的综合席原文
-export const planSynthesisCall = (env: ModelEnv): { mode: ModelMode; raw: string | null } => {
+// 有密钥时保持真实调用，回放才允许改用编造原文
+export const planSynthesisCall = (
+  env: ModelEnv,
+  forceInvalid: boolean,
+): { mode: ModelMode; raw: string | null } => {
   const mode = selectMode(env);
   if (mode === "live") {
     return { mode: "live", raw: null };
   }
   return {
     mode: "replay",
-    raw: replaySynthesisInventedRaw(),
+    raw: forceInvalid ? replaySynthesisInventedRaw() : replaySynthesisGroundedRaw(),
   };
 };
 
@@ -103,10 +106,11 @@ export const synthesisUserMessage = (cards: readonly Card[]): string => {
   return JSON.stringify(visibleContext("synthesis", sampleFounder, concluded));
 };
 
-// 按样例立项运行综合席，回放原文原样返回，不收成产出
+// 按样例立项运行综合席，真实调用忽略回放开关
 export const runSynthesis = async (
   cardId: string,
   cards: readonly Card[],
+  forceInvalid: boolean,
 ): Promise<{ mode: ModelMode; raw: string }> => {
   const card = buildInitialCards(sampleFounder).find((item) => item.id === cardId);
   if (!card) {
@@ -126,7 +130,7 @@ export const runSynthesis = async (
     }
   }
   const env = loadEnv(process.env.NODE_ENV === "production" ? "production" : "development", process.cwd(), "");
-  const plan = planSynthesisCall(env);
+  const plan = planSynthesisCall(env, forceInvalid);
   if (plan.mode === "replay" && plan.raw !== null) {
     return { mode: "replay", raw: plan.raw };
   }

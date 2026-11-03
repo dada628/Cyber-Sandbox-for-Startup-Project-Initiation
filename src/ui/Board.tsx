@@ -12,7 +12,7 @@ interface BoardProps {
   onRunFinance: (cardId: string) => void;
   onRunUser: (cardId: string) => void;
   onRunCompetitor: (cardId: string) => void;
-  onRunSynthesis: (cardId: string) => void;
+  onRunSynthesis: (cardId: string, forceInvalid: boolean) => void;
 }
 
 // 四列从左到右：待拆解、质询中、待你确认、已入结论

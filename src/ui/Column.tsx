@@ -14,7 +14,7 @@ interface ColumnProps {
   onRunFinance: (cardId: string) => void;
   onRunUser: (cardId: string) => void;
   onRunCompetitor: (cardId: string) => void;
-  onRunSynthesis: (cardId: string) => void;
+  onRunSynthesis: (cardId: string, forceInvalid: boolean) => void;
 }
 
 // 一列质询卡，空列仍占位，推进事件交给卡片

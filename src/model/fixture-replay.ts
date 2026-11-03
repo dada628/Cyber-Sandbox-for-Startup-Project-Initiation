@@ -35,7 +35,12 @@ export const replayCompetitorValidRaw = (): string => {
   return readFixture("competitor-valid.json");
 };
 
-// 没有密钥时，综合席回放编造过的 JSON 原文
+// 没有密钥时，综合席回放已入结论的 JSON 原文
+export const replaySynthesisGroundedRaw = (): string => {
+  return readFixture("synthesis-grounded.json");
+};
+
+// 回放编造事实时，综合席回放引用了未入结论卡片的原文
 export const replaySynthesisInventedRaw = (): string => {
   return readFixture("synthesis-invented.json");
 };

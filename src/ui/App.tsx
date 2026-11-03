@@ -4,6 +4,7 @@ import { modeBadge, type ModelMode } from "../model/mode";
 import { acceptCompetitorRaw } from "../orchestrator/accept-competitor";
 import { acceptFinanceRaw } from "../orchestrator/accept-finance";
 import { acceptInvestorRaw } from "../orchestrator/accept-investor";
+import { acceptSynthesisRaw } from "../orchestrator/accept-synthesis";
 import { acceptUserRaw } from "../orchestrator/accept-user";
 import { Board } from "./Board";
 import { CardDrawer } from "./CardDrawer";
@@ -218,7 +219,7 @@ export const App = () => {
         setRunningCardId(null);
       });
   };
-  const runSynthesis = (cardId: string): void => {
+  const runSynthesis = (cardId: string, forceInvalid: boolean): void => {
     if (runningRef.current) {
       return;
     }
@@ -230,7 +231,7 @@ export const App = () => {
       const response = await fetch("/api/run-synthesis", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cardId, cards: board }),
+        body: JSON.stringify({ cardId, cards: board, forceInvalid }),
       });
       const payload: unknown = await response.json();
       if (!response.ok || !isRunReply(payload)) {
@@ -239,6 +240,12 @@ export const App = () => {
         return;
       }
       setModelRaw((current) => ({ ...current, [cardId]: payload.raw }));
+      const accepted = acceptSynthesisRaw(payload.raw, board);
+      if (accepted.ok) {
+        dispatch({ type: "SUBMIT_OUTPUT", cardId, valid: true, output: JSON.stringify(accepted.value) });
+        return;
+      }
+      dispatch({ type: "SUBMIT_OUTPUT", cardId, valid: false, failureReason: accepted.failureReason });
     };
     void request()
       .catch(() => {

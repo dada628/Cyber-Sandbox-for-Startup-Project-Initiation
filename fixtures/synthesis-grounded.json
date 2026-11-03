@@ -1,0 +1,27 @@
+{
+  "conclusion": "先补证据",
+  "revisionTasks": [
+    {
+      "text": "补上同校教材支出的抽样来源",
+      "sourceCardId": "card_problem"
+    },
+    {
+      "text": "写明服务费比例和单本成本",
+      "sourceCardId": "card_unit_economics"
+    }
+  ],
+  "likelyQuestions": [
+    "为什么学生不继续用学长群？",
+    "便宜的证据是什么？",
+    "闲鱼为什么不是替代？",
+    "服务费收多少？",
+    "没有数字时凭什么说风险可控？"
+  ],
+  "citedCardIds": [
+    "card_problem",
+    "card_user",
+    "card_competitor",
+    "card_unit_economics",
+    "card_risk"
+  ]
+}

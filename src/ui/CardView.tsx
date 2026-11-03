@@ -3,6 +3,7 @@ import { getRole } from "../agents/roles";
 import { statusLabel, type BoardEvent, type Card } from "../board/types";
 import { competitorPendingNames } from "./competitor-pending";
 import { financeHoldNumbers } from "./finance-hold";
+import { synthesisConclusion } from "./synthesis-conclusion";
 import { userHabitChange } from "./user-habit";
 
 interface CardViewProps {
@@ -16,7 +17,7 @@ interface CardViewProps {
   onRunFinance: (cardId: string) => void;
   onRunUser: (cardId: string) => void;
   onRunCompetitor: (cardId: string) => void;
-  onRunSynthesis: (cardId: string) => void;
+  onRunSynthesis: (cardId: string, forceInvalid: boolean) => void;
 }
 
 const manualOutput = JSON.stringify({ note: "手工占位" });
@@ -84,6 +85,7 @@ export const CardView = ({
   const holdNumbers = card.roleId === "finance" ? financeHoldNumbers(card.output) : [];
   const habitChange = card.roleId === "target_user" ? userHabitChange(card.output) : null;
   const pendingNames = card.roleId === "competitor" ? competitorPendingNames(card.output) : [];
+  const conclusion = card.roleId === "synthesis" ? synthesisConclusion(card.output) : null;
   const actions = cardActions(card);
   const dispatchAction = (event: BoardEvent) => (click: MouseEvent<HTMLButtonElement>): void => {
     click.stopPropagation();
@@ -135,7 +137,15 @@ export const CardView = ({
       return;
     }
     onOpen(card.id);
-    onRunSynthesis(card.id);
+    onRunSynthesis(card.id, false);
+  };
+  const replayInvented = (click: MouseEvent<HTMLButtonElement>): void => {
+    click.stopPropagation();
+    if (runPending) {
+      return;
+    }
+    onOpen(card.id);
+    onRunSynthesis(card.id, true);
   };
   const openCard = (click: MouseEvent<HTMLElement>): void => {
     if (click.target instanceof Element && click.target.closest("button")) {
@@ -169,6 +179,7 @@ export const CardView = ({
       {holdNumbers.length === 0 ? null : <p className="card-hold">未给通过：{holdNumbers.join("、")}</p>}
       {habitChange === null ? null : <p className="card-hold">习惯：{habitChange}</p>}
       {pendingNames.length === 0 ? null : <p className="card-hold">待证：{pendingNames.join("、")}</p>}
+      {conclusion === null ? null : <p className="card-hold">{conclusion}</p>}
       {investorRunning ? (
         <button type="button" disabled={runPending} onClick={runInvestor}>
           运行投资人
@@ -197,6 +208,11 @@ export const CardView = ({
       {synthesisRunning ? (
         <button type="button" disabled={runPending} onClick={runSynthesis}>
           运行综合席
+        </button>
+      ) : null}
+      {synthesisRunning && replay ? (
+        <button type="button" disabled={runPending} onClick={replayInvented}>
+          回放编造事实
         </button>
       ) : null}
       {actions.map((action) => (

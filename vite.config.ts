@@ -221,7 +221,9 @@ const runSynthesisRoute = (): Plugin => {
               sendJson(res, 400, { code: "BAD_REQUEST" });
               return;
             }
-            const result = await runSynthesis(cardId, boardCardsFromPayload(payload));
+            const forceInvalid =
+              typeof payload === "object" && payload !== null && "forceInvalid" in payload && payload.forceInvalid === true;
+            const result = await runSynthesis(cardId, boardCardsFromPayload(payload), forceInvalid);
             sendJson(res, 200, { mode: result.mode, raw: result.raw });
           } catch (error) {
             if (!(error instanceof ContractError)) {
